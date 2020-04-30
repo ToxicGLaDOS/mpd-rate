@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import os
 from mpd import MPDClient
-import json
 import sys
 import subprocess
 
@@ -26,21 +24,27 @@ def set_rating(client, uri, rating):
     print('set rating')
 
 def get_rating(client, uri):
-    return client.sticker_get('song', uri, 'rating')
+    stickers = client.sticker_list('song', uri)
+    if 'rating' in stickers.keys():
+        return client.sticker_get('song', uri, 'rating')
+    else:
+        return 'No Rating Yet :('
 
 
 def main():
-
-    if len(sys.argv) < 2 or len(sys.argv) > 2:
+    if len(sys.argv) > 2:
         # Subtract one for the implicit argument that's passed in
-        print(f'Must have exactly one argment, got: {len(sys.argv) - 1}')
+        print(f'Must have exactly zero or one argments, got: {len(sys.argv) - 1}')
         exit(1)
-    rating = sys.argv[1]
 
+    if len(sys.argv) >= 2:
+        rating = sys.argv[1]
+        if rating not in [str(x) for x in range(1,11)]:
+            print(f'First argument must be value between 1-10, got: {rating}')
+            exit(1)
+    else:
+        rating = None
 
-    if rating not in [str(x) for x in range(1,11)]:
-        print(f'First argument must be value between 1-10, got: {rating}')
-        exit(1)
 
     client = connect_to_server("music.blackolivepineapple.pizza", 6600)
 
@@ -48,25 +52,15 @@ def main():
     current_song_info = client.currentsong()
     current_file = current_song_info['file']
 
-
-    set_rating(client, current_file, rating)
-
-    send_os_notification('Rating applied!', f"""Artist: {current_song_info['artist']}
+    if rating:
+        set_rating(client, current_file, rating)
+        send_os_notification('Rating applied!', f"""Artist: {current_song_info['artist']}
 Title: {current_song_info['title']}
-Rating: {get_rating(client, current_file)}
-                            """)
-
-    #value = client.sticker_get('song', current_file, 'test')
-    #print(value)
-
-    #value = client.sticker_list('song', current_file)
-    #print(value)
-
-    #client.sticker_delete('song', current_file, 'test')
-    #print('Sticker deleted')
-
-    #value = client.sticker_list('song', current_file)
-    #print(value)
+Rating: {get_rating(client, current_file)}""")
+    else:
+        send_os_notification('Current rating:', f"""Artist: {current_song_info['artist']}
+Title: {current_song_info['title']}
+Rating: {get_rating(client, current_file)}""")
 
     disconnect_from_server(client)
 
