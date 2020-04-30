@@ -17,7 +17,7 @@ def disconnect_from_server(client):
 
 def send_os_notification(summary, message):
     print(message)
-    subprocess.Popen(['notify-send', summary, message])
+    subprocess.Popen(['dunstify', '-t', '2000', summary, message])
 
 def set_rating(client, uri, rating):
     client.sticker_set('song', uri, 'rating', rating)
