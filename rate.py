@@ -3,12 +3,24 @@
 from mpd import MPDClient
 import sys
 import subprocess
+import traceback
+import configparser
+import os.path
+import stat
 
-def connect_to_server(hostname, port):
+def connect_to_server():
     client = MPDClient()
+    if not os.path.isfile('mpd_config.ini'):
+        raise Exception('No config file found.')
+    st = os.stat('mpd_config.ini')
+    if bool(st.st_mode & stat.S_IROTH) or bool(st.st_mode & stat.S_IWOTH) or bool(st.st_mode & stat.S_IXOTH):
+        raise Exception('Config file has too loose of permissions. Make sure the other group has no permissions on mpd_confg.ini')
+    config = configparser.ConfigParser()
+    config.read('mpd_config.ini')
     client.timeout = 10
     client.idletimeout = None
-    client.connect(hostname, port)
+    client.connect(config['auth']['hostname'], config['auth']['port'])
+    client.password(config['auth']['password'])
     return client
 
 def disconnect_from_server(client):
@@ -46,10 +58,12 @@ def main():
         rating = None
 
 
-    client = connect_to_server("music.blackolivepineapple.pizza", 6600)
+    client = connect_to_server()
 
 
     current_song_info = client.currentsong()
+    if not current_song_info:
+        raise Exception('No song currently playing')
     current_file = current_song_info['file']
 
     if rating:
@@ -66,4 +80,8 @@ Rating: {get_rating(client, current_file)}""")
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        send_os_notification('ERROR:', str(e))
+        traceback.print_exc()
